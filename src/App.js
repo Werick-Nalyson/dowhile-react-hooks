@@ -5,25 +5,26 @@ import { UserView } from "./components/UserView";
 import { fetchGithubUser } from './userService';
 
 const UserInfo = ({ userName }) => {
-  const [user, setUser] = React.useState(null);
-  const [error, setError] = React.useState(null);
-  const [status, setStatus] = React.useState('idle');
+
+  const [state, setState] = React.useState({
+    status: userName ? "pending" : "idle",
+    user: null,
+    error: null
+  });
+
+  const { status, user, error } = state;
 
   React.useEffect(() => {
     if (!userName) return;
 
-    setUser(null);
-    setError(null);
-    setStatus('pendding');
+    setState({ status: "pending" });
 
     fetchGithubUser(userName).then(
       (userData) => {
-        setUser(userData);
-        setStatus('resolved');
+        setState({ status: "resolved", user: userData });
       },
       (error) => {
-        setError(error);
-        setStatus('rejected');
+        setState({ status: "rejected", error });
       }
     );
   }, [userName])
@@ -38,20 +39,13 @@ const UserInfo = ({ userName }) => {
     case "rejected":
       return <div>
         There was an error
-        <pre style={{ whiteSpace: "noemal" }}>{error}</pre>
+        <pre style={{ whiteSpace: "normal" }}>{error}</pre>
       </div>
 
-      default:
-        return "submit user"
+    default:
+      return "submit user"
   }
 
-  // if (!userName) {
-  //   return "Submit user";
-  // } else if (!user) {
-  //   return <UserFalback userName={userName} />
-  // } else {
-  //   return <UserView user={user} />
-  // }
 };
 
 const UserSection = ({ onSelect, userName }) => (
