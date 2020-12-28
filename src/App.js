@@ -4,10 +4,45 @@ import { UserFalback } from './components/UserFallback';
 import { UserView } from "./components/UserView";
 import { fetchGithubUser } from './userService';
 
+const REQUEST_STATUS = {
+  IDLE: "idle",
+  PENDING: "pending",
+  RESOLVED: "resolved",
+  REJECTED: "rejected"
+}
+
+const userReducer = (state, action) => {
+  switch (action.type) {
+    case REQUEST_STATUS.PENDING:
+      return {
+        status: REQUEST_STATUS.PENDING,
+        user: null,
+        error: null
+      }
+
+    case REQUEST_STATUS.RESOLVED:
+      return {
+        status: REQUEST_STATUS.RESOLVED,
+        user: action.user,
+        error: null
+      }
+
+    case REQUEST_STATUS.REJECTED:
+      return {
+        status: REQUEST_STATUS.REJECTED,
+        user: null,
+        error: action.error
+      }
+
+    default:
+      throw Error(`Unhandled error: ${action.type}`)
+  }
+}
+
 const UserInfo = ({ userName }) => {
 
-  const [state, setState] = React.useState({
-    status: userName ? "pending" : "idle",
+  const [state, dispatch] = React.useReducer(userReducer, {
+    status: userName ? REQUEST_STATUS.PENDING : REQUEST_STATUS.IDLE,
     user: null,
     error: null
   });
@@ -17,35 +52,47 @@ const UserInfo = ({ userName }) => {
   React.useEffect(() => {
     if (!userName) return;
 
-    setState({ status: "pending" });
+    dispatch({ type: REQUEST_STATUS.PENDING });
 
     fetchGithubUser(userName).then(
       (userData) => {
-        setState({ status: "resolved", user: userData });
+        dispatch({ type: REQUEST_STATUS.RESOLVED, user: userData });
       },
       (error) => {
-        setState({ status: "rejected", error });
+        dispatch({ type: REQUEST_STATUS.REJECTED, error });
       }
     );
   }, [userName])
 
   switch (status) {
-    case "pendding":
+    case REQUEST_STATUS.IDLE:
+      return "Submit user";
+
+    case REQUEST_STATUS.PENDING:
       return <UserFalback userName={userName} />;
 
-    case "resolved":
+    case REQUEST_STATUS.RESOLVED:
       return <UserView user={user} />;
 
-    case "rejected":
-      return <div>
-        There was an error
-        <pre style={{ whiteSpace: "normal" }}>{error}</pre>
-      </div>
+    case REQUEST_STATUS.REJECTED:
+      return (
+        <div>
+          There was an error
+          <pre style={{ whiteSpace: "normal" }}>{error}</pre>
+        </div>
+      )
 
     default:
-      return "submit user"
+      throw Error(`Unhandled status: ${status}`);
   }
 
+  // if (!userName) {
+  //   return "Submit user";
+  // } else if (!user) {
+  //   return <UserFalback userName={userName} />
+  // } else {
+  //   return <UserView user={user} />
+  // }
 };
 
 const UserSection = ({ onSelect, userName }) => (
