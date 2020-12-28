@@ -11,26 +11,26 @@ const REQUEST_STATUS = {
   REJECTED: "rejected"
 }
 
-const userReducer = (state, action) => {
+const asyncReducer = (state, action) => {
   switch (action.type) {
     case REQUEST_STATUS.PENDING:
       return {
         status: REQUEST_STATUS.PENDING,
-        user: null,
+        data: null,
         error: null
       }
 
     case REQUEST_STATUS.RESOLVED:
       return {
         status: REQUEST_STATUS.RESOLVED,
-        user: action.user,
+        data: action.data,
         error: null
       }
 
     case REQUEST_STATUS.REJECTED:
       return {
         status: REQUEST_STATUS.REJECTED,
-        user: null,
+        data: null,
         error: action.error
       }
 
@@ -39,30 +39,43 @@ const userReducer = (state, action) => {
   }
 }
 
-const UserInfo = ({ userName }) => {
-
-  const [state, dispatch] = React.useReducer(userReducer, {
-    status: userName ? REQUEST_STATUS.PENDING : REQUEST_STATUS.IDLE,
+const useAsync = (inititalState) => {
+  const [state, dispatch] = React.useReducer(asyncReducer, {
+    status: REQUEST_STATUS.IDLE,
     user: null,
-    error: null
+    error: null,
+    ...inititalState
   });
 
-  const { status, user, error } = state;
-
-  React.useEffect(() => {
-    if (!userName) return;
-
+  const run = React.useCallback((promise) => {
     dispatch({ type: REQUEST_STATUS.PENDING });
 
-    fetchGithubUser(userName).then(
-      (userData) => {
-        dispatch({ type: REQUEST_STATUS.RESOLVED, user: userData });
+    promise.then(
+      (data) => {
+        dispatch({ type: REQUEST_STATUS.RESOLVED, data });
       },
       (error) => {
         dispatch({ type: REQUEST_STATUS.REJECTED, error });
       }
     );
-  }, [userName])
+  }, [])
+
+  return { ...state, run }
+}
+
+const UserInfo = ({ userName }) => {
+  const initialRequestStatus = userName
+    ? REQUEST_STATUS.PENDING
+    : REQUEST_STATUS.IDLE;
+
+    const { status, error, data: user, run } = useAsync({
+      status: initialRequestStatus
+    });
+
+  React.useEffect(() => {
+    if (!userName) return;
+    return run (fetchGithubUser(userName));
+  }, [userName, run])
 
   switch (status) {
     case REQUEST_STATUS.IDLE:
